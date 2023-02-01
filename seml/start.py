@@ -64,7 +64,8 @@ def get_command_from_exp(exp, db_collection_name, verbose=False, unobserved=Fals
     elif launcher == 'hydra':
         config_strings = [f"{key}={val}" for key, val in flatten(config).items()] # does hydra like this encoding??
         config_strings += [f'++seml.db_collection={db_collection_name}', 
-                           f'++seml.overwrite={exp["_id"]}']
+                           f'++seml.overwrite={exp["_id"]}',
+                           f'++seml.output_dir={exp["seml"]["output_dir"]}']
     else:
         raise ValueError(f'Unsupported launcher {launcher}.')
         

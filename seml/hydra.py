@@ -1,0 +1,122 @@
+from typing import Callable, Optional, List
+from functools import wraps, partial
+import datetime
+import traceback as tb
+import sys
+import logging
+
+from seml.settings import SETTINGS
+from seml.observers import create_mongodb_observer
+
+States = SETTINGS.STATES
+
+
+def observe_hydra(observers: Optional[List]=None) -> Callable:
+    """ Uses sacred.observer instances to observe a hydra experiment that runs outside of Sacred.
+    Note that not all callbacks will be triggered by this wrapper, in particular only the following
+    will be invoked if appropriate:
+    - `started_event`
+    - `completed_event`
+    - `interrupted_event`
+    - `failed_event`
+    
+    By default, a `MongoObserver` instance will always track the experiment. If it is not present
+    in the list, it will be created by default.
+    
+    Use this decorator as follow to wrap your hydra main function.
+    ```python
+    @hydra.main(version_base=None)
+    @observe_hydra(observers=[...])
+    def main(cfg: DictConfig):
+        ...
+    ```
+    """
+    from omegaconf import DictConfig, OmegaConf
+    from sacred.observers import MongoObserver
+    
+    def make_decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def decorator(cfg: DictConfig):
+            _id = cfg.seml.overwrite
+            nonlocal observers
+            if observers is None:
+                observers = []
+            # The MongoObserver should always be present
+            if not any(isinstance(observer, MongoObserver) for observer in observers):
+                observers = [create_mongodb_observer(cfg.seml.db_collection, overwrite=cfg.seml.overwrite)] + observers
+            
+            failed_observers = []
+            def observer_call_catch_exceptions(observer, method, *args, **kwargs):
+                """ Catches exceptions in the observer call. """
+                if observers in failed_observers:
+                    return
+                try:
+                    getattr(observer, method)(*args, **kwargs)
+                except Exception as e:
+                    failed_observers.append(observer)
+                    logging.warning(
+                        f"An error ocurred in the '{observer}' " "observer: {e}"
+                    )
+            
+            try:
+                # `started_event`
+                for observer in observers:
+                    observer_call_catch_exceptions(
+                        observer,
+                        'started_event',
+                        ex_info = {
+                            'base_dir' : '', # TODO ?
+                            'sources' : [], # TODO ?
+                            },
+                        command = '',
+                        host_info = {},
+                        meta_info = {},
+                        config = OmegaConf.to_container(cfg),
+                        start_time = datetime.datetime.utcnow(),
+                        _id=_id,
+                    )
+                    
+                result = func(cfg)
+                
+                # `completed_event`
+                for observer in observers:
+                    observer_call_catch_exceptions(
+                        observer,
+                        'completed_event',
+                        stop_time = datetime.datetime.utcnow(),
+                        result = result,
+                    )
+                return result
+                
+            except (KeyboardInterrupt) as e:
+                for observer in observers:
+                    observer_call_catch_exceptions(
+                        observer,
+                        'interrupted_event',
+                        interrupt_time = datetime.datetime.utcnow(),
+                        status = States.INTERRUPTED[0],
+                    )
+                raise e
+            except BaseException as e:
+                for observer in observers:
+                    observer_call_catch_exceptions(
+                        observer,
+                        'failed_event',
+                        fail_time = datetime.datetime.utcnow(),
+                        fail_trace = tb.format_exception(*sys.exc_info())
+                    )
+                raise e
+            finally:
+                # wait for all observers
+                for observer in observers:
+                    observer.join()              
+        return decorator
+    
+    return make_decorator
+    
+__all__ = [
+    'observe_hydra'
+]
+    
+    
+    
