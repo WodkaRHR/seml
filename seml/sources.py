@@ -88,6 +88,12 @@ def get_imported_sources(executable, root_dir, conda_env, working_dir):
 
     return sources
 
+def get_artifacts(artifacts_list):
+    result = set()
+    for artifacts in artifacts_list:
+        result.update(os.path.abspath(filename) for filename in Path(artifacts).rglob('*') if filename.is_file())
+    return result
+
 
 def upload_sources(seml_config, collection, batch_id):
     with working_directory(seml_config['working_dir']):
@@ -100,6 +106,7 @@ def upload_sources(seml_config, collection, batch_id):
 
         if executable_abs not in sources:
             raise ExecutableError(f"Executable {executable_abs} was not found in the source code files to upload.")
+        sources.update(get_artifacts(seml_config['artifacts']))
 
         uploaded_files = []
         for s in sources:

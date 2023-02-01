@@ -26,3 +26,6 @@ comment.cut
 # Code editors
 .idea/
 .vscode/
+
+# Hydra outputs
+outputs

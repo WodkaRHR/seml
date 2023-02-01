@@ -1,0 +1,9 @@
+defaults:
+  - dataset: small_dataset_1
+
+max_epochs: ???
+learning_rate: 0.1
+regularization_params:
+  dropout: 0.2
+
+hidden_sizes: [64, 64]

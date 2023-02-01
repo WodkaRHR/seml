@@ -8,7 +8,7 @@ import copy
 import time
 import gridfs
 
-from seml.config import check_config
+from seml.config import check_sacred_config
 from seml.database import get_collection, build_filter_dict
 from seml.sources import delete_files, delete_orphaned_sources, upload_sources
 from seml.utils import s_if, chunker
@@ -439,9 +439,10 @@ def reload_sources(db_collection_name, batch_ids=None, keep_old=False, yes=False
         if 'working_dir' not in seml_config or not seml_config['working_dir']:
             logging.error(f'Batch {batch_id}: No source files to refresh.')
             continue
-
-        # Check whether the configurations aligns with the current source code
-        check_config(seml_config['executable'], seml_config['conda_environment'], configs, seml_config['working_dir'])
+        
+        if seml_config['launcher'] == 'sacred':
+            # Check whether the configurations aligns with the current source code
+            check_sacred_config(seml_config['executable'], seml_config['conda_environment'], configs, seml_config['working_dir'])
 
         # Find the currently used source files
         db = collection.database

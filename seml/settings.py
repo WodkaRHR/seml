@@ -66,7 +66,12 @@ SETTINGS = munchify(
             "COMPLETED": ["COMPLETED", "COMPLETING", "STAGE_OUT"],
         },
         "VALID_SEML_CONFIG_VALUES": ['executable', 'name', 'output_dir',
-                                     'conda_environment', 'project_root_dir'],
+                                     'conda_environment', 'project_root_dir',
+                                     'launcher', 'artifacts'],
+        "SEML_CONFIG_DEFAULTS" : {
+            'launcher': 'sacred',
+            'artifacts' : [],
+                },
         "VALID_SLURM_CONFIG_VALUES": ['experiments_per_job', 'max_simultaneous_jobs',
                                       'sbatch_options_template', 'sbatch_options'],
         "LOGIN_NODE_NAMES": ["fs"],

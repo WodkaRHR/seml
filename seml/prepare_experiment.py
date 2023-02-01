@@ -27,6 +27,7 @@ if __name__ == "__main__":
                         help="Load source files into this directory before starting.")
     parser.add_argument('--debug-server', default=False, type=lambda x: (str(x).lower() == 'true'),
                         help="Run the experiment with a debug server.")
+    parser.add_argument('--launcher', type=str, help='The framework used by the executable script.')
     args = parser.parse_args()
 
     # Set up logging
@@ -67,14 +68,14 @@ if __name__ == "__main__":
     interpreter, exe, config = get_command_from_exp(exp, db_collection_name, verbose=args.verbose,
                                                     unobserved=args.unobserved, post_mortem=args.post_mortem,
                                                     debug_server=args.debug_server)
-    cmd = get_shell_command(interpreter, exe, config)
+    cmd = get_shell_command(interpreter, exe, config, launcher=args.launcher)
     updates = {'seml.command': cmd}
 
     if use_stored_sources:
         temp_dir = args.stored_sources_dir
         # Store the temp dir for debugging purposes
         updates["seml.temp_dir"] = temp_dir
-        cmd = get_shell_command(interpreter, os.path.join(temp_dir, exe), config)
+        cmd = get_shell_command(interpreter, os.path.join(temp_dir, exe), config, launcher=args.launcher)
 
     if not args.unobserved:
         collection.update_one({'_id': exp_id}, {'$set': updates})

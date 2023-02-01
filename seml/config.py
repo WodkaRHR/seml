@@ -253,7 +253,7 @@ def generate_configs(experiment_config, overwrite_params=None):
     return all_configs
 
 
-def check_config(executable, conda_env, configs, working_dir):
+def check_sacred_config(executable, conda_env, configs, working_dir):
     """Check if the given configs are consistent with the Sacred experiment in the given executable.
 
     Parameters
@@ -381,6 +381,8 @@ def read_config(config_path):
     for k in seml_dict.keys():
         if k not in SETTINGS.VALID_SEML_CONFIG_VALUES:
             raise ConfigError(f"{k} is not a valid value in the `seml` config block.")
+    for k, v in SETTINGS.SEML_CONFIG_DEFAULTS.items():
+        seml_dict.setdefault(k, v)
 
     determine_executable_and_working_dir(config_path, seml_dict)
 
@@ -391,10 +393,10 @@ def read_config(config_path):
         for k in slurm_dict.keys():
             if k not in SETTINGS.VALID_SLURM_CONFIG_VALUES:
                 raise ConfigError(f"{k} is not a valid value in the `slurm` config block.")
-
-        return seml_dict, slurm_dict, config_dict
     else:
-        return seml_dict, {}, config_dict
+        slurm_dict = {}
+    
+    return seml_dict, slurm_dict, config_dict
 
 
 def determine_executable_and_working_dir(config_path, seml_dict):

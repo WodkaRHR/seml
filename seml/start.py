@@ -15,7 +15,7 @@ from tqdm.auto import tqdm
 
 from seml.database import get_collection, build_filter_dict
 from seml.sources import load_sources_from_db
-from seml.utils import s_if
+from seml.utils import flatten, s_if
 from seml.network import find_free_port
 from seml.settings import SETTINGS
 from seml.manage import cancel_experiment_by_id, reset_slurm_dict
@@ -42,24 +42,33 @@ def get_command_from_exp(exp, db_collection_name, verbose=False, unobserved=Fals
     exe = exp['seml']['executable']
 
     config = exp['config']
-    config['db_collection'] = db_collection_name
-    if not unobserved:
-        config['overwrite'] = exp['_id']
 
-    # We encode values with `repr` such that we can decode them with `eval`. While `shlex.quote`
-    # may cause messy commands with lots of single quotes JSON doesn't match Python 1:1, e.g.,
-    # boolean values are lower case in JSON (true, false) but start with capital letters in Python.
-    config_strings = [f"{key}={value_to_string(val, use_json)}" for key, val in config.items()]
+    launcher = exp['seml']['launcher']
+    if launcher == 'sacred':
+        config['db_collection'] = db_collection_name
+        if not unobserved:
+            config['overwrite'] = exp['_id']
+        # We encode values with `repr` such that we can decode them with `eval`. While `shlex.quote`
+        # may cause messy commands with lots of single quotes JSON doesn't match Python 1:1, e.g.,
+        # boolean values are lower case in JSON (true, false) but start with capital letters in Python.
+        config_strings = [f"{key}={value_to_string(val, use_json)}" for key, val in config.items()]
 
-    if not verbose:
-        config_strings.append("--force")
-    if unobserved:
-        config_strings.append("--unobserved")
-    if post_mortem:
-        config_strings.append("--pdb")
-    if debug:
-        config_strings.append("--debug")
-
+        if not verbose:
+            config_strings.append("--force")
+        if unobserved:
+            config_strings.append("--unobserved")
+        if post_mortem:
+            config_strings.append("--pdb")
+        if debug:
+            config_strings.append("--debug")
+    elif launcher == 'hydra':
+        config_strings = [f"{key}={val}" for key, val in flatten(config).items()] # does hydra like this encoding??
+        config_strings += [f'++seml.db_collection={db_collection_name}', 
+                           f'++seml.overwrite={exp["_id"]}']
+    else:
+        raise ValueError(f'Unsupported launcher {launcher}.')
+        
+        
     if debug_server:
         ip_address, port = find_free_port()
         if print_info:
@@ -72,19 +81,25 @@ def get_command_from_exp(exp, db_collection_name, verbose=False, unobserved=Fals
     return interpreter, exe, config_strings
 
 
-def get_config_overrides(config):
-    return " ".join(map(shlex.quote, config))
+def get_config_overrides(config, launcher=None):
+    valid_launchers = ['sacred', 'hydra']
+    if launcher not in valid_launchers:
+        raise ValueError(f'Unsupported launcher {launcher}. Supported are {valid_launchers}')
+    if launcher == 'sacred':
+        return "with " + " ".join(map(shlex.quote, config))
+    elif launcher == 'hydra':
+        
+        
+        return " ".join(map(shlex.quote, config))
 
-
-def get_shell_command(interpreter, exe, config, env: dict=None):
-    config_overrides = get_config_overrides(config)
-
+def get_shell_command(interpreter, exe, config, env: dict=None, launcher='sacred'):
+    config_overrides = get_config_overrides(config, launcher=launcher)
     if env is None or len(env) == 0:
-        return f"{interpreter} {exe} with {config_overrides}"
+        return f"{interpreter} {exe} {config_overrides}"
     else:
         env_overrides = " ".join(f"{key}={shlex.quote(val)}" for key, val in env.items())
 
-        return f"{env_overrides} {interpreter} {exe} with {config_overrides}"
+        return f"{env_overrides} {interpreter} {exe} {config_overrides}"
 
 
 def get_output_dir_path(config):
@@ -222,7 +237,8 @@ def start_sbatch_job(collection, exp_array, unobserved=False, name=None,
         'verbose': logging.root.level <= logging.VERBOSE,
         'unobserved': unobserved,
         'debug_server': debug_server,
-        'tmp_directory': SETTINGS.TMP_DIRECTORY
+        'tmp_directory': SETTINGS.TMP_DIRECTORY,
+        'launcher' : exp_array[0][0]['seml']['launcher'],
     }
     setup_command = SETTINGS.SETUP_COMMAND.format(**variables)
     end_command = SETTINGS.END_COMMAND.format(**variables)
@@ -307,7 +323,7 @@ def start_srun_job(collection, exp, unobserved=False,
         exit(1)
 
 def start_local_job(collection, exp, unobserved=False, post_mortem=False,
-                    output_dir_path='.', output_to_console=False, debug_server=False):
+                    output_dir_path='.', output_to_console=False, debug_server=False,):
     """Run an experiment locally.
 
     Parameters
@@ -339,7 +355,6 @@ def start_local_job(collection, exp, unobserved=False, post_mortem=False,
                                                     verbose=logging.root.level <= logging.VERBOSE,
                                                     unobserved=unobserved, post_mortem=post_mortem,
                                                     debug_server=debug_server)
-    cmd = get_shell_command(interpreter, exe, config)
 
     if not use_stored_sources:
         origin = Path().absolute()
@@ -349,6 +364,9 @@ def start_local_job(collection, exp, unobserved=False, post_mortem=False,
     try:
         seml_config = exp['seml']
         slurm_config = exp['slurm']
+        
+        
+        cmd = get_shell_command(interpreter, exe, config, launcher=seml_config['launcher'])
 
         if use_stored_sources:
             temp_dir = os.path.join(SETTINGS.TMP_DIRECTORY, str(uuid.uuid4()))
@@ -357,7 +375,7 @@ def start_local_job(collection, exp, unobserved=False, post_mortem=False,
             env = {"PYTHONPATH": f"{temp_dir}:$PYTHONPATH"}
             temp_exe = os.path.join(temp_dir, exe)
             # update the command to use the temp dir
-            cmd = get_shell_command(interpreter, temp_exe, config, env=env)
+            cmd = get_shell_command(interpreter, temp_exe, config, env=env, launcher=seml_config['launcher'])
 
         if output_dir_path:
             exp_name = get_exp_name(exp, collection.name)
@@ -747,20 +765,20 @@ def print_command(db_collection_name, sacred_id, batch_id, filter_dict, num_exps
     interpreter, exe, config = get_command_from_exp(exps_list[0], collection.name,
                                                     verbose=logging.root.level <= logging.VERBOSE,
                                                     unobserved=True, post_mortem=True)
-    logging.info(get_shell_command(interpreter, exe, config, env=env_dict))
+    logging.info(get_shell_command(interpreter, exe, config, env=env_dict, launcher=exp['seml'].get('launcher')))
 
     logging.info("\nCommand for remote debugging:")
     interpreter, exe, config = get_command_from_exp(exps_list[0], collection.name,
                                                     verbose=logging.root.level <= logging.VERBOSE,
                                                     unobserved=True, debug_server=True, print_info=False)
-    logging.info(get_shell_command(interpreter, exe, config, env=env_dict))
+    logging.info(get_shell_command(interpreter, exe, config, env=env_dict, launcher=exp['seml'].get('launcher')))
 
     logging.info("\n********** All raw commands **********")
     logging.root.setLevel(orig_level)
     for exp in exps_list:
         interpreter, exe, config = get_command_from_exp(
                 exp, collection.name, verbose=logging.root.level <= logging.VERBOSE)
-        logging.info(get_shell_command(interpreter, exe, config, env=env_dict))
+        logging.info(get_shell_command(interpreter, exe, config, env=env_dict, launcher=exp['seml'].get('launcher')))
 
 
 def start_experiments(db_collection_name, local, sacred_id, batch_id, filter_dict,
