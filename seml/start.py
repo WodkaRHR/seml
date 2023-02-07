@@ -12,10 +12,11 @@ import time
 import copy
 import uuid
 from tqdm.auto import tqdm
+import yaml
 
 from seml.database import get_collection, build_filter_dict
 from seml.sources import load_sources_from_db
-from seml.utils import flatten, s_if
+from seml.utils import flatten, s_if, yaml_dump_to_single_line
 from seml.network import find_free_port
 from seml.settings import SETTINGS
 from seml.manage import cancel_experiment_by_id, reset_slurm_dict
@@ -62,7 +63,11 @@ def get_command_from_exp(exp, db_collection_name, verbose=False, unobserved=Fals
         if debug:
             config_strings.append("--debug")
     elif launcher == 'hydra':
-        config_strings = [f"{key}={val}" for key, val in flatten(config).items()] # does hydra like this encoding??
+        # Note: It is important to dump the value using YAML syntax as this is what Hydra expects
+        # e.g. if you dump with `str`, `None` will be represented as 'None', a string literal
+        # whereas in YAML it would be `null``
+        
+        config_strings = [f"{key}={yaml_dump_to_single_line(val)}" for key, val in flatten(config).items()]
         config_strings += [f'++seml.db_collection={db_collection_name}', 
                            f'++seml.overwrite={exp["_id"]}',
                            f'++seml.output_dir={exp["seml"]["output_dir"]}']
@@ -89,8 +94,6 @@ def get_config_overrides(config, launcher=None):
     if launcher == 'sacred':
         return "with " + " ".join(map(shlex.quote, config))
     elif launcher == 'hydra':
-        
-        
         return " ".join(map(shlex.quote, config))
 
 def get_shell_command(interpreter, exe, config, env: dict=None, launcher='sacred'):

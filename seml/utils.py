@@ -5,6 +5,8 @@ import logging
 import json
 import copy
 import os
+import ruamel.yaml
+from io import StringIO
 
 
 def s_if(n):
@@ -272,3 +274,30 @@ def working_directory(path: Path):
         yield
     finally:
         os.chdir(origin)
+
+# singleton transformer according to https://stackoverflow.com/questions/75321463/python-yaml-dump-into-single-line
+
+class _YAMLToSingleLine:
+    
+    def __init__(self):
+        self._yaml = ruamel.yaml.YAML(typ='safe')
+        self._yaml.default_flow_style = True
+        self._yaml.width = 1_000_000 # should lines be larger than this?
+        
+    def __call__(self, data) -> str:
+        
+        num_attempts = 10
+        for attempts in range(num_attempts):
+            with StringIO() as stream:
+                self._yaml.dump(data, stream)
+                s = stream.getvalue()
+            output, rest = s.split('\n', 1)
+            if rest not in ['', '...\n']:
+                self._yaml.width *= 10
+            else:
+                return output
+        else:
+            raise RuntimeError(f'Received multiline string with tail representation {rest}'
+                               f' for a line-width of {self._yaml.width} after {num_attempts} attempts.')
+            
+yaml_dump_to_single_line = _YAMLToSingleLine() # singleton 'callable'

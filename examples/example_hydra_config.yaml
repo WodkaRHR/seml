@@ -104,7 +104,7 @@ small_datasets:
     hidden_sizes:
       type: choice
       options:
-        - [32, 16]  # this will be parsed into a Python list.
+        - [32, None]  # this will be parsed into a Python list.
 
   random:
     samples: 2

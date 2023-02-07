@@ -7,6 +7,7 @@ import logging
 
 from seml.settings import SETTINGS
 from seml.observers import create_mongodb_observer
+from seml.database import get_collection
 
 States = SETTINGS.STATES
 
@@ -30,6 +31,12 @@ def observe_hydra(observers: Optional[List]=None) -> Callable:
     def main(cfg: DictConfig):
         ...
     ```
+    
+    The decorator connects to the MongoDB database used by `seml` via the `.seml` subconfiguration
+    of the hydra configuration which is automatically created by `seml` when submitting experiments.
+    If the configuration is not present, the experiment will not be observed. 
+    
+    
     """
     from omegaconf import DictConfig, OmegaConf
     from sacred.observers import MongoObserver
@@ -37,6 +44,11 @@ def observe_hydra(observers: Optional[List]=None) -> Callable:
     def make_decorator(func: Callable) -> Callable:
         @wraps(func)
         def decorator(cfg: DictConfig):
+            if 'seml' not in cfg:
+                logging.warn('Main function decorated with hydra seml observer, but seml not specified. Function will not be observed.')
+                result = func(cfg)
+                return result
+            
             _id = cfg.seml.overwrite
             nonlocal observers
             if observers is None:
@@ -44,6 +56,11 @@ def observe_hydra(observers: Optional[List]=None) -> Callable:
             # The MongoObserver should always be present
             if not any(isinstance(observer, MongoObserver) for observer in observers):
                 observers = [create_mongodb_observer(cfg.seml.db_collection, overwrite=cfg.seml.overwrite)] + observers
+                
+            # The config instance to be saved in MongoDB should be the original one submitted by seml, not `cfg`,
+            # which is the OmegaConf built by Hydra
+            collection = get_collection(cfg.seml.db_collection)
+            run = collection.find_one({"_id": int(cfg.seml.overwrite)})
             
             failed_observers = []
             def observer_call_catch_exceptions(observer, method, *args, **kwargs):
@@ -55,7 +72,7 @@ def observe_hydra(observers: Optional[List]=None) -> Callable:
                 except Exception as e:
                     failed_observers.append(observer)
                     logging.warning(
-                        f"An error ocurred in the '{observer}' " "observer: {e}"
+                        f"An error ocurred in the '{observer}' observer: {e}"
                     )
             
             try:
@@ -68,10 +85,12 @@ def observe_hydra(observers: Optional[List]=None) -> Callable:
                             'base_dir' : '', # TODO ?
                             'sources' : [], # TODO ?
                             },
-                        command = '',
+                        command = run['seml']['command'],
                         host_info = {},
-                        meta_info = {},
-                        config = OmegaConf.to_container(cfg),
+                        meta_info = {
+                            'hydra_config' : OmegaConf.to_container(cfg, resolve=True),
+                            },
+                        config=run['config'],
                         start_time = datetime.datetime.utcnow(),
                         _id=_id,
                     )
