@@ -342,6 +342,12 @@ You can list all collections, use
 seml list
 ```
 
+You can print the fail traces of failed jobs using
+```bash
+seml seml_example print-fail-trace
+```
+You can again supply a `--filter-dict` argument. By default, only `KILLED`, `CANCELED` and `INTERRUPTED` experiments are printed
+
 ## Retrieve and evaluate results
 See the [example notebook](notebooks/experiment_results.ipynb) for an example of how to retrieve and evaluate our toy experiment's results.
 

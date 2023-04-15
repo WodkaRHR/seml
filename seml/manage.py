@@ -510,7 +510,8 @@ def update_experiments(db_collection_name, updates, sacred_id, filter_states, ba
         if ndelete >= SETTINGS.CONFIRM_DELETE_THRESHOLD:
             if not yes and input(f"Are you sure? (y/n) ").lower() != "y":
                 exit()
-        collection.update_one(filter_dict, updates)
+        result = collection.update_many(filter_dict, updates)
+        logging.info(f"Updated {result.modified_count} / {result.matched_count} configurations")
     else:
         exp = collection.find_one({'_id': sacred_id})
         if exp is None:
@@ -520,7 +521,8 @@ def update_experiments(db_collection_name, updates, sacred_id, filter_states, ba
             if SETTINGS.CONFIRM_DELETE_THRESHOLD <= 1:
                 if not yes and input('Are you sure? (y/n)').lower() != 'y':
                     exit()
-            collection.update_one({'_id': sacred_id}, updates)
+            result = collection.update_one({'_id': sacred_id}, updates)
+            logging.info(f"Updated {result.modified_count} / {result.matched_count} configurations")
             
 def print_fail_trace(db_collection_name, sacred_id, filter_states, batch_id, filter_dict, yes=False):
     collection = get_collection(db_collection_name)
