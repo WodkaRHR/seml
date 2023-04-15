@@ -335,6 +335,13 @@ seml seml_example update '{"$set" : {"config.dataset":"cora_ml", "config.hidden_
 The syntax for changing values in the collection follows [MongoDB](https://www.mongodb.com/docs/manual/reference/method/db.collection.updateMany/). Additionally, you can supply all arguments that can be supplied to `delete`, e.g. a `--filter-dict` argument to only select certain experiments.
 
 
+## Utilities
+
+You can list all collections, use
+```bash
+seml list
+```
+
 ## Retrieve and evaluate results
 See the [example notebook](notebooks/experiment_results.ipynb) for an example of how to retrieve and evaluate our toy experiment's results.
 

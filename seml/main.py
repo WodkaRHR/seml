@@ -4,7 +4,7 @@ import json
 import logging
 
 from seml.manage import (report_status, cancel_experiments, delete_experiments, detect_killed, reset_experiments,
-                         mongodb_credentials_prompt, reload_sources, update_experiments)
+                         mongodb_credentials_prompt, reload_sources, update_experiments, print_fail_trace)
 from seml.add import add_config_files
 from seml.start import start_experiments, start_jupyter_job, print_command
 from seml.database import clean_unreferenced_artifacts, list_database
@@ -159,7 +159,18 @@ def main():
             help="List of states to filter experiments by. Deletes all experiments if an empty list is passed. "
                  "Default: Delete all staged, failed, killed and interrupted experiments.")
     parser_update.set_defaults(func=update_experiments)
-
+    
+    parser_print_fail_trace = subparsers.add_parser(
+            "print-fail-trace",
+            help="Prints fail traces of all failed experiments."
+    )
+    parser_print_fail_trace.add_argument(
+            '-s', '--filter-states', type=str, nargs='*', default=[*States.FAILED, *States.KILLED,
+                                                                   *States.INTERRUPTED],
+            help="List of states to filter experiments by. "
+                 "Prints traces of all experiments if an empty list is passed. "
+                 "Default: Print failed, killed and interrupted experiments.")
+    parser_print_fail_trace.set_defaults(func=print_fail_trace)
 
 
     parser_reload = subparsers.add_parser(
@@ -263,7 +274,7 @@ def main():
     parser_detect.set_defaults(func=detect_killed)
 
     for subparser in [parser_start, parser_launch_worker, parser_print_command,
-                      parser_cancel, parser_delete, parser_reset, parser_update]:
+                      parser_cancel, parser_delete, parser_reset, parser_update, parser_print_fail_trace]:
         subparser.add_argument(
                 '-id', '--sacred-id', type=int,
                 help="Sacred ID (_id in the database collection) of the experiment. "
