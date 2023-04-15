@@ -4,7 +4,7 @@ import json
 import logging
 
 from seml.manage import (report_status, cancel_experiments, delete_experiments, detect_killed, reset_experiments,
-                         mongodb_credentials_prompt, reload_sources)
+                         mongodb_credentials_prompt, reload_sources, update_experiments)
 from seml.add import add_config_files
 from seml.start import start_experiments, start_jupyter_job, print_command
 from seml.database import clean_unreferenced_artifacts
@@ -140,6 +140,21 @@ def main():
             '-nw', '--no-worker', action='store_true',
             help="Do not launch a local worker after setting experiments' state to PENDING.")
     parser_start.set_defaults(func=start_experiments, set_to_pending=True)
+    
+    parser_update = subparsers.add_parser(
+            "update",
+            help="Updates values of all experiments."
+    )
+    parser_update.add_argument(
+            'updates', type=json.loads,
+            help="Updates parameters in all experiments using a MongoDB query (https://www.mongodb.com/docs/manual/reference/method/db.collection.updateMany/)")
+    parser_update.add_argument(
+            '-s', '--filter-states', type=str, nargs='*', default=[*States.STAGED, *States.FAILED,
+                                                                   *States.KILLED, *States.INTERRUPTED],
+            help="List of states to filter experiments by. Deletes all experiments if an empty list is passed. "
+                 "Default: Delete all staged, failed, killed and interrupted experiments.")
+    parser_update.set_defaults(func=update_experiments)
+
 
 
     parser_reload = subparsers.add_parser(
@@ -243,7 +258,7 @@ def main():
     parser_detect.set_defaults(func=detect_killed)
 
     for subparser in [parser_start, parser_launch_worker, parser_print_command,
-                      parser_cancel, parser_delete, parser_reset]:
+                      parser_cancel, parser_delete, parser_reset, parser_update]:
         subparser.add_argument(
                 '-id', '--sacred-id', type=int,
                 help="Sacred ID (_id in the database collection) of the experiment. "
@@ -257,7 +272,7 @@ def main():
                 help="Batch ID (batch_id in the database collection) of the experiments. "
                      "Experiments that were staged together have the same batch_id.")
     
-    for subparser in [parser_cancel, parser_reload, parser_clean_db, parser_delete, parser_reset]:
+    for subparser in [parser_cancel, parser_reload, parser_clean_db, parser_delete, parser_reset, parser_update]:
         subparser.add_argument(
             '-y', '--yes', action='store_true',
             help="Automatically confirm all dialogues with yes."

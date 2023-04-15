@@ -4,6 +4,7 @@ import datetime
 import traceback as tb
 import sys
 import logging
+from dataclasses import dataclass
 
 from seml.settings import SETTINGS
 from seml.observers import create_mongodb_observer
@@ -11,6 +12,12 @@ from seml.database import get_collection
 
 States = SETTINGS.STATES
 
+    
+@dataclass
+class SemlConfig:
+    overwrite: str | None = None
+    db_collection: str | None = None
+    command: str | None = None
 
 def observe_hydra(observers: Optional[List]=None) -> Callable:
     """ Uses sacred.observer instances to observe a hydra experiment that runs outside of Sacred.
@@ -44,8 +51,8 @@ def observe_hydra(observers: Optional[List]=None) -> Callable:
     def make_decorator(func: Callable) -> Callable:
         @wraps(func)
         def decorator(cfg: DictConfig):
-            if 'seml' not in cfg:
-                logging.warn('Main function decorated with hydra seml observer, but seml not specified. Function will not be observed.')
+            if 'seml' not in cfg or cfg.seml is None or cfg.seml.overwrite is None:
+                logging.warn('Main function decorated with hydra seml observer, but seml (experiment) not specified. Function will not be observed.')
                 result = func(cfg)
                 return result
             
@@ -85,7 +92,7 @@ def observe_hydra(observers: Optional[List]=None) -> Callable:
                             'base_dir' : '', # TODO ?
                             'sources' : [], # TODO ?
                             },
-                        command = run['seml']['command'],
+                        command = run['seml'].get('command', ''),
                         host_info = {},
                         meta_info = {
                             'hydra_config' : OmegaConf.to_container(cfg, resolve=True),

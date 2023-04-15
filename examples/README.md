@@ -326,6 +326,15 @@ seml seml_example cancel --filter-dict '{"batch_id": i}'
 ```
 to cancel all jobs from batch `i`.
 
+## Update configuration
+
+You can update the configuration values of your experiments with
+```bash
+seml seml_example update '{"$set" : {"config.dataset":"cora_ml", "config.hidden_sizes":[16]}}'
+```
+The syntax for changing values in the collection follows [MongoDB](https://www.mongodb.com/docs/manual/reference/method/db.collection.updateMany/). Additionally, you can supply all arguments that can be supplied to `delete`, e.g. a `--filter-dict` argument to only select certain experiments.
+
+
 ## Retrieve and evaluate results
 See the [example notebook](notebooks/experiment_results.ipynb) for an example of how to retrieve and evaluate our toy experiment's results.
 

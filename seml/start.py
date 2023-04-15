@@ -66,8 +66,18 @@ def get_command_from_exp(exp, db_collection_name, verbose=False, unobserved=Fals
         # Note: It is important to dump the value using YAML syntax as this is what Hydra expects
         # e.g. if you dump with `str`, `None` will be represented as 'None', a string literal
         # whereas in YAML it would be `null``
-        
-        config_strings = [f"{key}={yaml_dump_to_single_line(val)}" for key, val in flatten(config).items()]
+        config_strings, hydra_cli_config_strings = [], []
+        for key, val in flatten(config).items():
+            if key.startswith('_hydra_cli_arguments.'):
+                # These keys are not merged with seml's configuration manager
+                # instead they will just be forwarded to hydra's cli BEFORE all other
+                # configuration arguments
+                key = key.replace('_hydra_cli_arguments.', '')
+                hydra_cli_config_strings.append(f"{key}={yaml_dump_to_single_line(val)}")
+            else:
+                config_strings.append(f"{key}={yaml_dump_to_single_line(val)}")
+
+        config_strings = hydra_cli_config_strings + config_strings
         config_strings += [f'++seml.db_collection={db_collection_name}', 
                            f'++seml.overwrite={exp["_id"]}',
                            f'++seml.output_dir={exp["seml"]["output_dir"]}']
@@ -956,3 +966,4 @@ def start_jupyter_job(sbatch_options: dict = None, conda_env: str = None, lab: b
         url_str = url_str[:-4]
     logging.info(f"Start-up completed. The Jupyter instance is running at '{url_str}'.")
     logging.info(f"To stop the job, run 'scancel {slurm_array_job_id}'.")
+    
