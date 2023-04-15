@@ -7,7 +7,7 @@ from seml.manage import (report_status, cancel_experiments, delete_experiments, 
                          mongodb_credentials_prompt, reload_sources, update_experiments)
 from seml.add import add_config_files
 from seml.start import start_experiments, start_jupyter_job, print_command
-from seml.database import clean_unreferenced_artifacts
+from seml.database import clean_unreferenced_artifacts, list_database
 from seml.utils import LoggingFormatter
 from seml.settings import SETTINGS
 
@@ -63,6 +63,11 @@ def main():
             help='Display more log messages.')
 
     subparsers = parser.add_subparsers(title="Possible operations")
+    
+    parser_list_db = subparsers.add_parser(
+            "list",
+            help="Lists all collections in the database.")
+    parser_list_db.set_defaults(func=list_database)
 
     parser_clean_db = subparsers.add_parser(
             "clean-db",
@@ -293,7 +298,7 @@ def main():
             logging_level = logging.INFO
         logging.root.setLevel(logging_level)
 
-        if command.func in [mongodb_credentials_prompt, start_jupyter_job, parser.print_usage]:
+        if command.func in [mongodb_credentials_prompt, start_jupyter_job, list_database, parser.print_usage]:
             # No collection name required
             del command.db_collection_name
         elif command.func in [clean_unreferenced_artifacts]:

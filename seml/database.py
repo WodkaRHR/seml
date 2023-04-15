@@ -8,7 +8,6 @@ from seml.utils import s_if
 from seml.settings import SETTINGS
 from seml.errors import MongoDBError
 
-
 def get_collection(collection_name, mongodb_config=None, suffix=None):
     if mongodb_config is None:
         mongodb_config = get_mongodb_config()
@@ -277,3 +276,15 @@ def clean_unreferenced_artifacts(db_collection_name=None, yes=False):
     logging.info('Deleting not referenced artifacts...')
     delete_files(db, not_referenced_artifacts, progress=True)
     logging.info(f'Successfully deleted {n_delete} not referenced artifact{s_if(n_delete)}.')
+
+def list_database(mongodb_config=None):
+    if mongodb_config is None:
+        mongodb_config = get_mongodb_config()
+    db = get_database(**mongodb_config)
+    collection_names = [name for name in db.list_collection_names()
+                        if name not in ('fs.chunks', 'fs.files')]
+    max_collection_name_length = max(len(name) for name in collection_names)
+    for collection_name in collection_names:
+        collection = db[collection_name]
+        num_documents = collection.count_documents({})
+        print(f'Collection {collection_name.ljust(max_collection_name_length)} : {num_documents} experiments')

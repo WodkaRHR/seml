@@ -495,7 +495,8 @@ def reload_sources(db_collection_name, batch_ids=None, keep_old=False, yes=False
             source_files = [x['_id'] for x in db['fs.files'].find(fs_filter_dict, {'_id'})]
             for to_delete in source_files:
                 fs.delete(to_delete)
-                
+ 
+               
 def update_experiments(db_collection_name, updates, sacred_id, filter_states, batch_id, filter_dict, yes=False):
     collection = get_collection(db_collection_name)
     if sacred_id is None:
