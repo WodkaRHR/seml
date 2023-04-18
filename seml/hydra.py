@@ -1,5 +1,5 @@
 from typing import Callable, Optional, List
-from functools import wraps, partial
+from functools import wraps
 import datetime
 import traceback as tb
 import sys
@@ -12,14 +12,13 @@ from seml.database import get_collection
 
 States = SETTINGS.STATES
 
-    
 @dataclass
 class SemlConfig:
     overwrite: str | None = None
     db_collection: str | None = None
     command: str | None = None
 
-def observe_hydra(observers: Optional[List]=None) -> Callable:
+def seml_observe_hydra(observers: Optional[List]=None) -> Callable:
     """ Uses sacred.observer instances to observe a hydra experiment that runs outside of Sacred.
     Note that not all callbacks will be triggered by this wrapper, in particular only the following
     will be invoked if appropriate:
@@ -34,7 +33,7 @@ def observe_hydra(observers: Optional[List]=None) -> Callable:
     Use this decorator as follow to wrap your hydra main function.
     ```python
     @hydra.main(version_base=None)
-    @observe_hydra(observers=[...])
+    @seml_observe_hydra(observers=[...])
     def main(cfg: DictConfig):
         ...
     ```
@@ -89,8 +88,8 @@ def observe_hydra(observers: Optional[List]=None) -> Callable:
                         observer,
                         'started_event',
                         ex_info = {
-                            'base_dir' : '', # TODO ?
-                            'sources' : [], # TODO ?
+                            'base_dir' : '', 
+                            'sources' : [],
                             },
                         command = run['seml'].get('command', ''),
                         host_info = {},
