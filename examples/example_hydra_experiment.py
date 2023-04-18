@@ -1,13 +1,13 @@
 import hydra
 from omegaconf import DictConfig, OmegaConf
-from seml.hydra import observe_hydra
+from seml.hydra import seml_observe_hydra
 
 def print_config(config: DictConfig) -> None:
     content = OmegaConf.to_yaml(config, resolve=True)
     print(content)
 
 @hydra.main(config_path='hydra_config', config_name='config', version_base=None)
-@observe_hydra()
+@seml_observe_hydra()
 def main(config: DictConfig) -> float:
     OmegaConf.resolve(config)
     print_config(config)
