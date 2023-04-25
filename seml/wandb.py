@@ -3,7 +3,8 @@ import logging
 
 # Note that this requires `wandb` to be installed
 
-def experiment_set_wandb(run: 'wandb_sdk.wandb_run.Run', db_collection_name: str, experiment_id: int,
+def experiment_set_wandb(run: 'wandb_sdk.wandb_run.Run', db_collection_name: str | None, 
+                         experiment_id: int | None,
                          set_dir: bool = True, set_entity: bool = True,
                          set_group: bool = True, set_id : bool = True,
                          set_mode: bool = True, set_name: bool = True,
@@ -13,6 +14,9 @@ def experiment_set_wandb(run: 'wandb_sdk.wandb_run.Run', db_collection_name: str
                          set_tags: bool = True, set_url: bool = True):
     """ Updates the experiment in the database with attributes from the currently active wandb run. 
     This allows for easier matching of wandb and seml experiments. """
+    if db_collection_name is None or experiment_id is None:
+        logging.warn(f'Can not set wandb run information to seml database as no seml experiment is specified')
+        return
     if run is None:
         raise RuntimeError(f'Can not set wandb run information to seml database, as `run` is `None`')
     updates = {}
