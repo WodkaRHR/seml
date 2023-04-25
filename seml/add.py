@@ -168,7 +168,7 @@ def add_config_file(db_collection_name, config_file, force_duplicates, overwrite
     del seml_config['use_uploaded_sources']
 
     if not no_sanity_check:
-        if seml_config['launcher'] == 'sacred':
+        if seml_config.get('launcher', 'sacred') == 'sacred':
             check_sacred_config(seml_config['executable'], seml_config['conda_environment'], configs, seml_config['working_dir'])
 
     path, commit, dirty = get_git_info(seml_config['executable'], seml_config['working_dir'])

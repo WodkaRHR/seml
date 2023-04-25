@@ -44,7 +44,7 @@ def get_command_from_exp(exp, db_collection_name, verbose=False, unobserved=Fals
 
     config = exp['config']
 
-    launcher = exp['seml']['launcher']
+    launcher = exp['seml'].get('launcher', 'sacred')
     if launcher == 'sacred':
         config['db_collection'] = db_collection_name
         if not unobserved:
@@ -252,7 +252,7 @@ def start_sbatch_job(collection, exp_array, unobserved=False, name=None,
         'unobserved': unobserved,
         'debug_server': debug_server,
         'tmp_directory': SETTINGS.TMP_DIRECTORY,
-        'launcher' : exp_array[0][0]['seml']['launcher'],
+        'launcher' : exp_array[0][0]['seml'].get('launcher', 'sacred'),
     }
     setup_command = SETTINGS.SETUP_COMMAND.format(**variables)
     end_command = SETTINGS.END_COMMAND.format(**variables)
@@ -380,7 +380,7 @@ def start_local_job(collection, exp, unobserved=False, post_mortem=False,
         slurm_config = exp['slurm']
         
         
-        cmd = get_shell_command(interpreter, exe, config, launcher=seml_config['launcher'])
+        cmd = get_shell_command(interpreter, exe, config, launcher=seml_config.get('launcher', 'sacred'))
 
         if use_stored_sources:
             temp_dir = os.path.join(SETTINGS.TMP_DIRECTORY, str(uuid.uuid4()))
@@ -389,7 +389,7 @@ def start_local_job(collection, exp, unobserved=False, post_mortem=False,
             env = {"PYTHONPATH": f"{temp_dir}:$PYTHONPATH"}
             temp_exe = os.path.join(temp_dir, exe)
             # update the command to use the temp dir
-            cmd = get_shell_command(interpreter, temp_exe, config, env=env, launcher=seml_config['launcher'])
+            cmd = get_shell_command(interpreter, temp_exe, config, env=env, launcher=seml_config.get('launcher', 'sacred'))
 
         if output_dir_path:
             exp_name = get_exp_name(exp, collection.name)
