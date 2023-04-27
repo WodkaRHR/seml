@@ -102,6 +102,8 @@ def add_configs(collection, seml_config, slurm_config, configs, source_files=Non
                  'git': git_info,
                  'add_time': datetime.datetime.utcnow()}
                 for ix, c in enumerate(configs)]
+    
+    print([d['config'] for d in db_dicts])
 
     collection.insert_many(db_dicts)
 
@@ -177,8 +179,12 @@ def add_config_file(db_collection_name, config_file, force_duplicates, overwrite
         git_info = {'path': path, 'commit': commit, 'dirty': dirty}
 
     use_hash = not no_hash
+    
+    print(configs)
     if use_hash:
         configs = [{**c, **{'config_hash': make_hash(c)}} for c in configs]
+        
+    print(configs)
 
     if not force_duplicates:
         len_before = len(configs)
@@ -215,4 +221,5 @@ def add_config_file(db_collection_name, config_file, force_duplicates, overwrite
     collection.create_index("config_hash")
     # Add the configurations to the database with STAGED status.
     if len(configs) > 0:
+        print(configs)
         add_configs(collection, seml_config, slurm_config, configs, uploaded_files, git_info)
