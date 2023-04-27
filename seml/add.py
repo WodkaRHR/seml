@@ -45,7 +45,6 @@ def filter_experiments(collection, configurations):
 
         if lookup_result is None:
             filtered_configs.append(config)
-
     return filtered_configs
 
 
@@ -207,6 +206,10 @@ def add_config_file(db_collection_name, config_file, force_duplicates, overwrite
         if len_after != len_after_deduplication:
             logging.info(f"{len_after_deduplication - len_after} of {len_after_deduplication} "
                          f"experiment{s_if(len_before)} were already found in the database. They were not added again.")
+    elif use_hash:
+        for config in configs:
+            del config['config_hash']
+        
 
     # Create an index on the config hash. If the index is already present, this simply does nothing.
     collection.create_index("config_hash")
