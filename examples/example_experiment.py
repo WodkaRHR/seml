@@ -3,7 +3,6 @@ from sacred import Experiment
 import numpy as np
 import seml
 
-
 ex = Experiment()
 seml.setup_logger(ex)
 
@@ -28,7 +27,6 @@ def run(dataset: str, hidden_sizes: list, learning_rate: float, max_epochs: int,
     logging.info('Received the following configuration:')
     logging.info(f'Dataset: {dataset}, hidden sizes: {hidden_sizes}, learning_rate: {learning_rate}, '
                  f'max_epochs: {max_epochs}, regularization: {regularization_params}')
-
     #  do your processing here
 
     results = {

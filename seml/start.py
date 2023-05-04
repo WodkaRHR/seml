@@ -703,6 +703,7 @@ def start_local_worker(collection, num_exps=0, filter_dict=None, unobserved=Fals
             exp = collection.find_one(exp_query)
         else:
             exp = collection.find_one_and_update(exp_query, {"$set": {"status": States.RUNNING[0]}})
+            
         if exp is None:
             continue
         if 'array_id' in exp['slurm']:

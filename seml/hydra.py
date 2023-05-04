@@ -78,9 +78,9 @@ def seml_observe_hydra(observers: Optional[List]=None) -> Callable:
                 except Exception as e:
                     failed_observers.append(observer)
                     logging.warning(
-                        f"An error ocurred in the '{observer}' observer: {e}"
+                        f"An error ocurred in the '{observer}' observer: {e}\n{e.with_traceback}"
                     )
-            
+                    tb.print_tb(e.__traceback__)
             try:
                 # `started_event`
                 for observer in observers:
