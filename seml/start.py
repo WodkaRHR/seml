@@ -68,14 +68,17 @@ def get_command_from_exp(exp, db_collection_name, verbose=False, unobserved=Fals
         # whereas in YAML it would be `null``
         config_strings, hydra_cli_config_strings = [], []
         for key, val in flatten(config).items():
+            val_string = yaml_dump_to_single_line(val)
+            if '$' in val_string: # containts interpolation
+                val_string = f'"{val_string}"'
             if key.startswith('_hydra_cli_arguments.'):
                 # These keys are not merged with seml's configuration manager
                 # instead they will just be forwarded to hydra's cli BEFORE all other
                 # configuration arguments
                 key = key.replace('_hydra_cli_arguments.', '')
-                hydra_cli_config_strings.append(f"{key}={yaml_dump_to_single_line(val)}")
+                hydra_cli_config_strings.append(f"{key}={val_string}")
             else:
-                config_strings.append(f"{key}={yaml_dump_to_single_line(val)}")
+                config_strings.append(f"{key}={val_string}")
 
         config_strings = hydra_cli_config_strings + config_strings
         config_strings += [f'++seml.db_collection={db_collection_name}', 
