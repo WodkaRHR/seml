@@ -3,10 +3,14 @@ import pymongo
 from pymongo.collection import Collection
 import logging
 from tqdm.auto import tqdm
+from collections import Counter
+from prettytable import PrettyTable
 
 from seml.utils import s_if
 from seml.settings import SETTINGS
 from seml.errors import MongoDBError
+
+States = SETTINGS.STATES
 
 def get_collection(collection_name, mongodb_config=None, suffix=None):
     if mongodb_config is None:
@@ -284,7 +288,15 @@ def list_database(mongodb_config=None):
     collection_names = [name for name in db.list_collection_names()
                         if name not in ('fs.chunks', 'fs.files')]
     max_collection_name_length = max(len(name) for name in collection_names)
+    name_to_counts = {} 
     for collection_name in collection_names:
         collection = db[collection_name]
-        num_documents = collection.count_documents({})
-        print(f'Collection {collection_name.ljust(max_collection_name_length)} : {num_documents} experiments')
+        name_to_counts[collection_name] = Counter(exp['status'] for exp in collection.find({}, {'status' : 1}))
+    
+    columns = [States.STAGED[0], States.PENDING[0], States.RUNNING[0], States.FAILED[0], States.KILLED[0], States.INTERRUPTED[0], 
+               States.COMPLETED[0]]
+    table = PrettyTable()
+    table.field_names = ['Collection'] + [state for state in columns] + ['Total']
+    for name, counts in name_to_counts.items():
+        table.add_row([name] + [counts[state] for state in columns] + [sum(counts.values())])
+    print(table)

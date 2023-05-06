@@ -12,6 +12,7 @@ install_requires = [
     "debugpy>=1.2.1",
     "requests>=2.28.1",
     "ruamel.yaml",
+    "prettytable"
 ]
 
 with open("README.md", "r") as fh:

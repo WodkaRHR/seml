@@ -301,3 +301,16 @@ class _YAMLToSingleLine:
                                f' for a line-width of {self._yaml.width} after {num_attempts} attempts.')
             
 yaml_dump_to_single_line = _YAMLToSingleLine() # singleton 'callable'
+
+def hydra_to_override(value):
+    """ Parses a value to something that will be given to the hydra CLI. """
+    if isinstance(value, dict):
+        raise ValueError(f'SEML should resolve nested dicts {value}')
+    elif isinstance(value, list):
+        value_str = '[' + ','.join(hydra_to_override(v) for v in value) + ']'
+    elif value is None:
+        value_str = 'null'
+    else:
+        value_str = f'{value}'
+    return value_str
+    

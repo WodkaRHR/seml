@@ -16,7 +16,7 @@ import yaml
 
 from seml.database import get_collection, build_filter_dict
 from seml.sources import load_sources_from_db
-from seml.utils import flatten, s_if, yaml_dump_to_single_line
+from seml.utils import flatten, hydra_to_override, s_if, yaml_dump_to_single_line
 from seml.network import find_free_port
 from seml.settings import SETTINGS
 from seml.manage import cancel_experiment_by_id, reset_slurm_dict
@@ -68,9 +68,7 @@ def get_command_from_exp(exp, db_collection_name, verbose=False, unobserved=Fals
         # whereas in YAML it would be `null``
         config_strings, hydra_cli_config_strings = [], []
         for key, val in flatten(config).items():
-            val_string = yaml_dump_to_single_line(val)
-            if '$' in val_string: # containts interpolation
-                val_string = f'"{val_string}"'
+            val_string = hydra_to_override(val)
             if key.startswith('_hydra_cli_arguments.'):
                 # These keys are not merged with seml's configuration manager
                 # instead they will just be forwarded to hydra's cli BEFORE all other
@@ -372,7 +370,6 @@ def start_local_job(collection, exp, unobserved=False, post_mortem=False,
                                                     verbose=logging.root.level <= logging.VERBOSE,
                                                     unobserved=unobserved, post_mortem=post_mortem,
                                                     debug_server=debug_server)
-
     if not use_stored_sources:
         origin = Path().absolute()
         os.chdir(exp['seml']['working_dir'])

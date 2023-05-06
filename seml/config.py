@@ -320,7 +320,6 @@ def _convert_value(value):
     Parse string as python literal if possible and fallback to string.
     Copied from sacred.arg_parser for performance reasons.
     """
-
     try:
         return restore(ast.literal_eval(value))
     except (ValueError, SyntaxError):
@@ -368,15 +367,21 @@ YamlUniqueLoader.add_constructor(
 )
 
 
-def read_config(config_path):
+def read_config(config_path, parse_strings: bool=True):
     with open(config_path, 'r') as conf:
-        config_dict = convert_values(yaml.load(conf, Loader=YamlUniqueLoader))
+        config_dict = yaml.load(conf, Loader=YamlUniqueLoader)
 
     if "seml" not in config_dict:
         raise ConfigError("Please specify a 'seml' dictionary.")
+    if config_dict['seml'].get('launcher', 'sacred') != 'hydra':
+        # Hydra does not like it if you resolve the strings for it...
+        config_dict = convert_values(config_dict)
+    
 
     seml_dict = config_dict['seml']
     del config_dict['seml']
+    
+    
 
     for k in seml_dict.keys():
         if k not in SETTINGS.VALID_SEML_CONFIG_VALUES:

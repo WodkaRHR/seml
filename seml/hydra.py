@@ -5,6 +5,9 @@ import traceback as tb
 import sys
 import logging
 from dataclasses import dataclass
+import json
+
+from omegaconf import DictConfig, OmegaConf
 
 from seml.settings import SETTINGS
 from seml.observers import create_mongodb_observer
@@ -94,7 +97,6 @@ def seml_observe_hydra(observers: Optional[List]=None) -> Callable:
                         command = run['seml'].get('command', ''),
                         host_info = {},
                         meta_info = {
-                            'hydra_config' : OmegaConf.to_container(cfg, resolve=True),
                             },
                         config=run['config'],
                         start_time = datetime.datetime.utcnow(),
@@ -137,10 +139,42 @@ def seml_observe_hydra(observers: Optional[List]=None) -> Callable:
                     observer.join()              
         return decorator
     
-    return make_decorator
+    return make_decorator   
+
+def experiment_set_hydra_config(config: DictConfig, db_collection_name: str | None, 
+                         experiment_id: int | None):
+    """Sets the `hydra_config` attribute in the experiments MongoDB entry
+
+    Args:
+        config (DictConfig): the hydra config, does not have to be resolved but can
+        db_collection_name (str | None): which database collection to use
+        experiment_id (int | None): which experiment id
+    """
+    if db_collection_name is None or experiment_id is None:
+        logging.warn(f'Can not set hydra config to experiment in MongoDB as no experiment is given')
+        return
     
+    config = OmegaConf.to_container(config, resolve=True)
+    # config = json.loads(json.dumps(config)) # If we can serialize to json, we can serialize to bson
+    
+    updates = {
+        'hydra_config' : config
+    }
+    if len(updates):
+        collection = get_collection(db_collection_name)
+        result = collection.update_one({"_id": int(experiment_id)}, {'$set' : updates})
+        if result.matched_count != result.modified_count:
+            logging.warn(f'Setting hydra config in seml experiments matched {result.matched_count} with id {experiment_id} in collection '
+                         f'{db_collection_name} but modified {result.modified_count}')
+        if result.matched_count == 0:
+            logging.error(f'Did not find any seml experiment with {experiment_id} in collection {db_collection_name} to update with hydra config.')
+        if result.modified_count != 1:
+            logging.error(f'Modified {result.modified_count} (more than one) experiment with hydra config.')
+            
+
+
 __all__ = [
-    'observe_hydra'
+    'seml_observe_hydra'
 ]
     
     
