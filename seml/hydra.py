@@ -170,12 +170,7 @@ def experiment_set_hydra_config(config: DictConfig, db_collection_name: str | No
             logging.error(f'Did not find any seml experiment with {experiment_id} in collection {db_collection_name} to update with hydra config.')
         if result.modified_count != 1:
             logging.error(f'Modified {result.modified_count} (more than one) experiment with hydra config.')
-            
 
-
-__all__ = [
-    'seml_observe_hydra'
-]
     
     
     
