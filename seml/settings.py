@@ -95,6 +95,8 @@ SETTINGS = munchify(
 
         "SETUP_COMMAND": "",
         "END_COMMAND": "",
+        
+        "HYDRA_GROUP_ARGUMENTS_PREFIX" : 'HYDRA_GROUP_ARGUMENTS'
     },
 )
 

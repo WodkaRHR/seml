@@ -134,7 +134,7 @@ def detect_duplicate_parameters(inverted_config: dict, sub_config_name: str = No
                 raise ConfigError(error_str.format(p1=p1, p2=p2))
 
 
-def generate_configs(experiment_config, overwrite_params=None):
+def generate_configs(experiment_config, overwrite_params=None, detect_duplicates: bool = True):
     """Generate parameter configurations based on an input configuration.
 
     Input is a nested configuration where on each level there can be 'fixed', 'grid', and 'random' parameters.
@@ -158,6 +158,8 @@ def generate_configs(experiment_config, overwrite_params=None):
         parsed from a YAML file.
     overwrite_params: Optional[dict]
         Flat dictionary that overwrites configs. Resulting duplicates will be removed.
+    detect_duplicates: bool
+        If duplicate parameters will be removed. True by default.
 
     Returns
     -------
@@ -175,7 +177,8 @@ def generate_configs(experiment_config, overwrite_params=None):
     config_levels = [reserved]
     final_configs = []
 
-    detect_duplicate_parameters(invert_config(reserved), None)
+    if detect_duplicates:
+        detect_duplicate_parameters(invert_config(reserved), None)
 
     while len(level_stack) > 0:
         current_sub_name, sub_vals = level_stack.pop(0)
@@ -186,7 +189,8 @@ def generate_configs(experiment_config, overwrite_params=None):
         config_above = config_levels.pop(0)
 
         inverted_sub_config = invert_config(sub_config)
-        detect_duplicate_parameters(inverted_sub_config, current_sub_name)
+        if detect_duplicates:
+            detect_duplicate_parameters(inverted_sub_config, current_sub_name)
 
         inverted_config_above = invert_config(config_above)
         redefined_parameters = set(inverted_sub_config.keys()).intersection(set(inverted_config_above.keys()))
@@ -376,12 +380,9 @@ def read_config(config_path, parse_strings: bool=True):
     if config_dict['seml'].get('launcher', 'sacred') != 'hydra':
         # Hydra does not like it if you resolve the strings for it...
         config_dict = convert_values(config_dict)
-    
-
+        
     seml_dict = config_dict['seml']
     del config_dict['seml']
-    
-    
 
     for k in seml_dict.keys():
         if k not in SETTINGS.VALID_SEML_CONFIG_VALUES:

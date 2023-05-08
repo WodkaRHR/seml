@@ -287,7 +287,6 @@ def list_database(mongodb_config=None):
     db = get_database(**mongodb_config)
     collection_names = [name for name in db.list_collection_names()
                         if name not in ('fs.chunks', 'fs.files')]
-    max_collection_name_length = max(len(name) for name in collection_names)
     name_to_counts = {} 
     for collection_name in collection_names:
         collection = db[collection_name]
@@ -299,4 +298,8 @@ def list_database(mongodb_config=None):
     table.field_names = ['Collection'] + [state for state in columns] + ['Total']
     for name, counts in name_to_counts.items():
         table.add_row([name] + [counts[state] for state in columns] + [sum(counts.values())])
+    table.sortby = 'Collection'
+    for field_name in table.field_names:
+        table.align[field_name] = 'r'
+    table.align['Collection'] = 'l'
     print(table)

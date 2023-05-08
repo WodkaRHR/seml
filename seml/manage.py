@@ -495,36 +495,9 @@ def reload_sources(db_collection_name, batch_ids=None, keep_old=False, yes=False
             source_files = [x['_id'] for x in db['fs.files'].find(fs_filter_dict, {'_id'})]
             for to_delete in source_files:
                 fs.delete(to_delete)
- 
-               
-def update_experiments(db_collection_name, updates, sacred_id, filter_states, batch_id, filter_dict, yes=False):
-    collection = get_collection(db_collection_name)
-    if sacred_id is None:
-        if len({*States.PENDING, *States.RUNNING, *States.KILLED} & set(filter_states)) > 0:
-            detect_killed(db_collection_name, print_detected=False)
-
-        filter_dict = build_filter_dict(filter_states, batch_id, filter_dict)
-        ndelete = collection.count_documents(filter_dict)
-
-        logging.info(f"Updating {ndelete} configuration{s_if(ndelete)} from database collection.")
-        if ndelete >= SETTINGS.CONFIRM_DELETE_THRESHOLD:
-            if not yes and input(f"Are you sure? (y/n) ").lower() != "y":
-                exit()
-        result = collection.update_many(filter_dict, updates)
-        logging.info(f"Updated {result.modified_count} / {result.matched_count} configurations")
-    else:
-        exp = collection.find_one({'_id': sacred_id})
-        if exp is None:
-            raise MongoDBError(f"No experiment found with ID {sacred_id}.")
-        else:
-            logging.info(f"Updating experiment with ID {sacred_id}.")
-            if SETTINGS.CONFIRM_DELETE_THRESHOLD <= 1:
-                if not yes and input('Are you sure? (y/n)').lower() != 'y':
-                    exit()
-            result = collection.update_one({'_id': sacred_id}, updates)
-            logging.info(f"Updated {result.modified_count} / {result.matched_count} configurations")
             
 def print_fail_trace(db_collection_name, sacred_id, filter_states, batch_id, filter_dict, yes=False):
+    """ Convenience function that prints the fail trace of experiments"""
     collection = get_collection(db_collection_name)
     projection = {'_id': 1, 'status': 1, 'slurm.array_id': 1, 'slurm.task_id': 1, 'fail_trace' : 1}
     

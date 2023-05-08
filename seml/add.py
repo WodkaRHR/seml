@@ -1,6 +1,7 @@
 import os
 import datetime
 import logging
+from pathlib import Path
 
 from seml.database import get_max_in_collection, get_collection
 from seml.config import remove_prepended_dashes, read_config, generate_configs, check_sacred_config
@@ -151,7 +152,20 @@ def add_config_file(db_collection_name, config_file, force_duplicates, overwrite
                 slurm_config['sbatch_options'][k] = v
 
     slurm_config['sbatch_options'] = remove_prepended_dashes(slurm_config['sbatch_options'])
-    configs = generate_configs(experiment_config, overwrite_params=overwrite_params)
+    if seml_config.get('launcher', 'sacred') == 'sacred':
+        configs = generate_configs(experiment_config, overwrite_params=overwrite_params)
+    elif seml_config.get('launcher', 'sacred') == 'hydra':
+        from seml.hydra import resolve_hydra_configs
+        
+        # Hydra configs are resolved by hydra to allow for a sensible duplicate detection
+        configs = generate_configs(experiment_config, overwrite_params=overwrite_params)
+        configs, hydra_config_path = resolve_hydra_configs(seml_config.get('project_root_dir', '.'), seml_config['executable'], configs)
+        
+        # Add the config path to the seml artifacts
+        if 'artifacts' not in seml_config:
+            seml_config['artifacts'] = []
+        seml_config['artifacts'].append(hydra_config_path)
+        
     collection = get_collection(db_collection_name)
 
     batch_id = get_max_in_collection(collection, "batch_id")
@@ -210,8 +224,7 @@ def add_config_file(db_collection_name, config_file, force_duplicates, overwrite
     elif use_hash:
         for config in configs:
             del config['config_hash']
-        
-
+    
     # Create an index on the config hash. If the index is already present, this simply does nothing.
     collection.create_index("config_hash")
     # Add the configurations to the database with STAGED status.

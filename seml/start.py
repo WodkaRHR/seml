@@ -23,6 +23,7 @@ from seml.manage import cancel_experiment_by_id, reset_slurm_dict
 from seml.errors import ConfigError, ArgumentError, MongoDBError
 from seml.json import PythonEncoder
 
+
 States = SETTINGS.STATES
 SlurmStates = SETTINGS.SLURM_STATES
 
@@ -66,19 +67,17 @@ def get_command_from_exp(exp, db_collection_name, verbose=False, unobserved=Fals
         # Note: It is important to dump the value using YAML syntax as this is what Hydra expects
         # e.g. if you dump with `str`, `None` will be represented as 'None', a string literal
         # whereas in YAML it would be `null``
-        config_strings, hydra_cli_config_strings = [], []
+        config_strings, hydra_group_config_strings = [], []
         for key, val in flatten(config).items():
             val_string = hydra_to_override(val)
-            if key.startswith('_hydra_cli_arguments.'):
-                # These keys are not merged with seml's configuration manager
-                # instead they will just be forwarded to hydra's cli BEFORE all other
-                # configuration arguments
-                key = key.replace('_hydra_cli_arguments.', '')
-                hydra_cli_config_strings.append(f"{key}={val_string}")
+            if key.startswith(f'{SETTINGS.HYDRA_GROUP_ARGUMENTS_PREFIX}.'):
+                # These group arguments will be forwarded directly to the hydra cli preceeding all other configurations
+                key = key.replace(f'{SETTINGS.HYDRA_GROUP_ARGUMENTS_PREFIX}.', '')
+                hydra_group_config_strings.append(f"{key}={val_string}")
             else:
                 config_strings.append(f"{key}={val_string}")
 
-        config_strings = hydra_cli_config_strings + config_strings
+        config_strings = hydra_group_config_strings + config_strings
         config_strings += [f'++seml.db_collection={db_collection_name}', 
                            f'++seml.overwrite={exp["_id"]}',
                            f'++seml.output_dir={exp["seml"]["output_dir"]}']
@@ -774,26 +773,26 @@ def print_command(db_collection_name, sacred_id, batch_id, filter_dict, num_exps
     logging.info("\nArguments for VS Code debugger:")
     logging.info(json.dumps(["with", "--debug"] + vscode_config))
     logging.info("Arguments for PyCharm debugger:")
-    logging.info("with --debug " + get_config_overrides(config))
+    logging.info("with --debug " + get_config_overrides(config, launcher=exp['seml'].get('launcher', 'sacred')))
 
     logging.info("\nCommand for post-mortem debugging:")
     interpreter, exe, config = get_command_from_exp(exps_list[0], collection.name,
                                                     verbose=logging.root.level <= logging.VERBOSE,
                                                     unobserved=True, post_mortem=True)
-    logging.info(get_shell_command(interpreter, exe, config, env=env_dict, launcher=exp['seml'].get('launcher')))
+    logging.info(get_shell_command(interpreter, exe, config, env=env_dict, launcher=exp['seml'].get('launcher', 'sacred')))
 
     logging.info("\nCommand for remote debugging:")
     interpreter, exe, config = get_command_from_exp(exps_list[0], collection.name,
                                                     verbose=logging.root.level <= logging.VERBOSE,
                                                     unobserved=True, debug_server=True, print_info=False)
-    logging.info(get_shell_command(interpreter, exe, config, env=env_dict, launcher=exp['seml'].get('launcher')))
+    logging.info(get_shell_command(interpreter, exe, config, env=env_dict, launcher=exp['seml'].get('launcher', 'sacred')))
 
     logging.info("\n********** All raw commands **********")
     logging.root.setLevel(orig_level)
     for exp in exps_list:
         interpreter, exe, config = get_command_from_exp(
                 exp, collection.name, verbose=logging.root.level <= logging.VERBOSE)
-        logging.info(get_shell_command(interpreter, exe, config, env=env_dict, launcher=exp['seml'].get('launcher')))
+        logging.info(get_shell_command(interpreter, exe, config, env=env_dict, launcher=exp['seml'].get('launcher', 'sacred')))
 
 
 def start_experiments(db_collection_name, local, sacred_id, batch_id, filter_dict,

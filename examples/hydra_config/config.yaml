@@ -1,5 +1,6 @@
 defaults:
   - dataset: small_dataset_1
+  - test: base_test
 
 max_epochs: ???
 learning_rate: 0.1
