@@ -78,6 +78,7 @@ slurm:
 
 fixed:
   max_epochs: 500
+  dataset.name: "${test.foo}baf"
 
 random:
   samples: 1
@@ -88,7 +89,8 @@ random:
     type: uniform
     min: 0.0
     max: 0.7
-    seed: 222
+    seed: 234
+
 
 small_datasets:
 

@@ -88,11 +88,14 @@ def _resolve_hydra_configs(directory: PathLike, executable: PathLike,
         config_path, config_name, version_base = detect_hydra_arguments_from_main_decorator(executable)
         
         with working_directory(Path(executable).parent):
-            with initialize_config_dir(str(config_path.absolute()), version_base=None):
+            with initialize_config_dir(str(config_path.absolute()), version_base=version_base):
                 configs = []
                 for overrides in overrides_per_config:
+                    flat_keys = [override.split('=')[0] for override in overrides]
                     cfg = compose(config_name=config_name, overrides=overrides)
-                    configs.append(OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True, enum_to_str=True))
+                    cfg = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True, enum_to_str=True)
+                    cfg = {k : v for k, v in flatten_config(cfg).items() if k in flat_keys}
+                    configs.append(unflatten(cfg))
                     
     result['configs'] = configs
     result['config_path'] = str(Path(executable).parent / config_path)

@@ -1,1 +1,2 @@
 name: small_dataset_2
+dataset_lr: ${learning_rate}
