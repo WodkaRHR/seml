@@ -1,20 +1,21 @@
-import itertools
-import logging
-import numpy as np
-import yaml
 import ast
-import jsonpickle
-import json
-import os
-from pathlib import Path
 import copy
+import json
+import logging
+import numbers
+import os
 from itertools import combinations
+from pathlib import Path
 
-from seml.sources import import_exe
-from seml.parameters import zipped_dict, sample_random_configs, generate_grid, cartesian_product_zipped_dict
-from seml.utils import Hashabledict, merge_dicts, flatten, unflatten, working_directory
+import yaml
+
 from seml.errors import ConfigError, ExecutableError
+from seml.parameters import (cartesian_product_zipped_dict, generate_grid,
+                             sample_random_configs, zipped_dict)
 from seml.settings import SETTINGS
+from seml.sources import import_exe
+from seml.utils import (Hashabledict, flatten, merge_dicts, unflatten,
+                        working_directory)
 
 RESERVED_KEYS = ['grid', 'fixed', 'random']
 
@@ -239,7 +240,7 @@ def generate_configs(experiment_config, overwrite_params=None, detect_duplicates
         all_configs.extend(with_random)
 
     # Cast NumPy integers to normal integers since PyMongo doesn't like them
-    all_configs = [{k: int(v) if isinstance(v, np.integer) else v
+    all_configs = [{k: int(v) if isinstance(v, numbers.Integral) else v
                     for k, v in config.items()}
                    for config in all_configs]
 
@@ -316,6 +317,7 @@ def restore(flat):
     Restore more complex data that Python's json can't handle (e.g. Numpy arrays).
     Copied from sacred.serializer for performance reasons.
     """
+    import jsonpickle
     return jsonpickle.decode(json.dumps(flat), keys=True)
 
 
@@ -392,13 +394,17 @@ def read_config(config_path, parse_strings: bool=True):
 
     determine_executable_and_working_dir(config_path, seml_dict)
 
-    if 'slurm' in config_dict:
+    if 'slurm' in config_dict and config_dict['slurm'] is not None:
         slurm_dict = config_dict['slurm']
         del config_dict['slurm']
 
         for k in slurm_dict.keys():
             if k not in SETTINGS.VALID_SLURM_CONFIG_VALUES:
                 raise ConfigError(f"{k} is not a valid value in the `slurm` config block.")
+            if k == 'sbatch_options' and slurm_dict['sbatch_options'] is None:
+                slurm_dict['sbatch_options'] = {}
+
+        return seml_dict, slurm_dict, config_dict
     else:
         slurm_dict = {}
     

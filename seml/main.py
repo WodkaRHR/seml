@@ -1,15 +1,16 @@
-import sys
 import argparse
 import json
 import logging
+import sys
 
-from seml.manage import (report_status, cancel_experiments, delete_experiments, detect_killed, reset_experiments,
-                         mongodb_credentials_prompt, reload_sources, print_fail_trace)
 from seml.add import add_config_files
-from seml.start import start_experiments, start_jupyter_job, print_command
 from seml.database import clean_unreferenced_artifacts, list_database
-from seml.utils import LoggingFormatter
+from seml.manage import (cancel_experiments, delete_experiments, detect_killed,
+                         mongodb_credentials_prompt, print_fail_trace,
+                         reload_sources, report_status, reset_experiments)
 from seml.settings import SETTINGS
+from seml.start import print_command, start_experiments, start_jupyter_job
+from seml.utils import LoggingFormatter
 
 States = SETTINGS.STATES
 
@@ -29,9 +30,13 @@ def parse_args(parser, commands):
         parser.parse_args(split_argv[0])
     # Parse all subcommands
     commands = []
+    shared_args = split_argv[0]
+    if len(shared_args) == 0:
+        # Add empty collection if not provided
+        shared_args = ['']
     for argv in split_argv[1:]:
         # Copy the original arguments and the command specific ones
-        n = parser.parse_args(split_argv[0] + argv)
+        n = parser.parse_args(shared_args + argv)
         commands.append(n)
     return commands
 
@@ -67,6 +72,16 @@ def main():
     parser_list_db = subparsers.add_parser(
             "list",
             help="Lists all collections in the database.")
+    parser_list_db.add_argument(
+            "pattern",
+            nargs="?",
+            help="A regex that must match the collections to print", type=str,
+            default=r'.*',
+    )
+    parser_list_db.add_argument(
+            "--progress-bar",
+            help="Whether to print a progress bar for iterating over collections", action='store_true', dest="progress"
+    )
     parser_list_db.set_defaults(func=list_database)
 
     parser_clean_db = subparsers.add_parser(
@@ -146,6 +161,18 @@ def main():
             help="Do not launch a local worker after setting experiments' state to PENDING.")
     parser_start.set_defaults(func=start_experiments, set_to_pending=True)
     
+    parser_print_fail_trace = subparsers.add_parser(
+            "print-fail-trace",
+            help="Prints fail traces of all failed experiments."
+    )
+    parser_print_fail_trace.add_argument(
+            '-s', '--filter-states', type=str, nargs='*', default=[*States.FAILED, *States.KILLED,
+                                                                   *States.INTERRUPTED],
+            help="List of states to filter experiments by. "
+                 "Prints traces of all experiments if an empty list is passed. "
+                 "Default: Print failed, killed and interrupted experiments.")
+    parser_print_fail_trace.set_defaults(func=print_fail_trace)
+
     parser_print_fail_trace = subparsers.add_parser(
             "print-fail-trace",
             help="Prints fail traces of all failed experiments."
@@ -279,7 +306,6 @@ def main():
             '-y', '--yes', action='store_true',
             help="Automatically confirm all dialogues with yes."
         )
-
     commands = parse_args(parser, subparsers)
 
     # Initialize logging
@@ -294,7 +320,6 @@ def main():
         else:
             logging_level = logging.INFO
         logging.root.setLevel(logging_level)
-
         if command.func in [mongodb_credentials_prompt, start_jupyter_job, list_database, parser.print_usage]:
             # No collection name required
             del command.db_collection_name

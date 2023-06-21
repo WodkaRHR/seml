@@ -4,15 +4,14 @@ install_requires = [
     "numpy>=1.15",
     "pymongo>=3.11",
     "pandas",
-    "sacred>=0.8.0",
+    "sacred>=0.8.4",
     "pyyaml>=5.1",
-    "jsonpickle>=1.2, <2.0",
+    "jsonpickle>=2.2",
     "munch>=2.0.4",
     "tqdm>=4.36",
     "debugpy>=1.2.1",
     "requests>=2.28.1",
     "ruamel.yaml",
-    "prettytable"
 ]
 
 with open("README.md", "r") as fh:
@@ -35,6 +34,6 @@ setup(
             ]
     },
     install_requires=install_requires,
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     zip_safe=False,
 )
