@@ -173,18 +173,6 @@ def main():
                  "Default: Print failed, killed and interrupted experiments.")
     parser_print_fail_trace.set_defaults(func=print_fail_trace)
 
-    parser_print_fail_trace = subparsers.add_parser(
-            "print-fail-trace",
-            help="Prints fail traces of all failed experiments."
-    )
-    parser_print_fail_trace.add_argument(
-            '-s', '--filter-states', type=str, nargs='*', default=[*States.FAILED, *States.KILLED,
-                                                                   *States.INTERRUPTED],
-            help="List of states to filter experiments by. "
-                 "Prints traces of all experiments if an empty list is passed. "
-                 "Default: Print failed, killed and interrupted experiments.")
-    parser_print_fail_trace.set_defaults(func=print_fail_trace)
-
 
     parser_reload = subparsers.add_parser(
             "reload-sources",
