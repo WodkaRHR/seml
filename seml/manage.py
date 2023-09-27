@@ -11,7 +11,7 @@ from seml.database import build_filter_dict, get_collection
 from seml.errors import ArgumentError, MongoDBError
 from seml.settings import SETTINGS
 from seml.sources import delete_files, delete_orphaned_sources, upload_sources
-from seml.utils import chunker, s_if
+from seml.utils import chunker, make_hash, s_if
 
 States = SETTINGS.STATES
 
@@ -513,3 +513,24 @@ def print_fail_trace(db_collection_name, sacred_id, filter_states, batch_id, fil
         logging.info(f'***** Experiment ID {exp_id}, status: {status}, slurm array-id, task-id: {slurm_array_id}-{slurm_task_id} *****')
         logging.info(''.join(['\t' + line for line in fail_trace] + []))
     logging.info(f'Printed the fail traces of {len(exps)} experiment(s).')
+
+def compute_hashes(db_collection_name, sacred_id, filter_states, batch_id, filter_dict, yes=False):
+    """ Convenience function that (re)-computes hashes of all configs. """
+    
+    from pymongo import UpdateOne
+    
+    collection = get_collection(db_collection_name)
+    projection = {'_id': 1, 'config' : 1}
+    if sacred_id is None:
+        filter_dict = build_filter_dict(filter_states, batch_id, filter_dict)
+        exps = list(collection.find(filter_dict, projection))
+    else:
+        exps = [collection.find_one({'_id': sacred_id}, projection)]
+    print(db_collection_name, len(exps))
+    
+    updates = [
+        UpdateOne({'_id' : exp['_id']}, {'$set' : {'config_hash' : make_hash(exp['config'])}})
+        for exp in exps
+    ]
+    result = collection.bulk_write(updates)
+    logging.info(f'Recomputed hashes of {result.matched_count} experiments ({result.modified_count} were updated.)')

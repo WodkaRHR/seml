@@ -93,7 +93,11 @@ def _resolve_hydra_configs(directory: PathLike, executable: PathLike,
                 for overrides in overrides_per_config:
                     flat_keys = [override.split('=')[0] for override in overrides]
                     cfg = compose(config_name=config_name, overrides=overrides)
-                    cfg = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True, enum_to_str=True)
+                    try:
+                        cfg = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True, enum_to_str=True)
+                    except Exception as e:
+                        print('Error for overrides', overrides)
+                        raise e
                     cfg = {k : v for k, v in flatten_config(cfg).items() if k in flat_keys}
                     configs.append(unflatten(cfg))
                     

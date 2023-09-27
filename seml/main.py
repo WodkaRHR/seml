@@ -7,7 +7,8 @@ from seml.add import add_config_files
 from seml.database import clean_unreferenced_artifacts, list_database
 from seml.manage import (cancel_experiments, delete_experiments, detect_killed,
                          mongodb_credentials_prompt, print_fail_trace,
-                         reload_sources, report_status, reset_experiments)
+                         reload_sources, report_status, reset_experiments,
+                         compute_hashes)
 from seml.settings import SETTINGS
 from seml.start import print_command, start_experiments, start_jupyter_job
 from seml.utils import LoggingFormatter
@@ -173,6 +174,16 @@ def main():
                  "Default: Print failed, killed and interrupted experiments.")
     parser_print_fail_trace.set_defaults(func=print_fail_trace)
 
+    parser_compute_hashes = subparsers.add_parser(
+            "compute-hashes",
+            help="(Re)-computes hashes of all configuration files"
+    )
+    parser_compute_hashes.add_argument(
+            '-s', '--filter-states', type=str, nargs='*', default=[*States],
+            help="List of states to filter experiments by. "
+                 "Resets all experiments if an empty list is passed. "
+                 "Default: Reset failed, killed and interrupted experiments.")
+    parser_compute_hashes.set_defaults(func=compute_hashes)
 
     parser_reload = subparsers.add_parser(
             "reload-sources",
@@ -275,7 +286,7 @@ def main():
     parser_detect.set_defaults(func=detect_killed)
 
     for subparser in [parser_start, parser_launch_worker, parser_print_command,
-                      parser_cancel, parser_delete, parser_reset, parser_print_fail_trace]:
+                      parser_cancel, parser_delete, parser_reset, parser_print_fail_trace, parser_compute_hashes]:
         subparser.add_argument(
                 '-id', '--sacred-id', type=int,
                 help="Sacred ID (_id in the database collection) of the experiment. "
@@ -326,6 +337,8 @@ def main():
         if 'filter_states' in command:
             command.filter_states = [state.upper() for state in command.filter_states]
         f(**vars(command))
+
+
 
 
 if __name__ == "__main__":
